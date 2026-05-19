@@ -2,10 +2,10 @@
 
 - Cặp đàm phán:
 - Product: A / B
-- Provider service:
-- Consumer service:
-- Người viết:
-- Ngày:
+- Provider service:Notification
+- Consumer service:Core Business
+- Người viết:Nguyễn Thế Ngọc
+- Ngày:19/05/2026
 
 ---
 
@@ -13,8 +13,8 @@
 
 | Resource | Mô tả | Thuộc tính bắt buộc | Thuộc tính tùy chọn |
 |---|---|---|---|
-| `<Resource 1>` |  |  |  |
-| `<Resource 2>` |  |  |  |
+| Alert Event | Event cảnh báo do Core Business gửi sang Notification | eventId, eventType, alertId, correlationId, severity | channels, metadata |
+| Notification Delivery | Thông tin kết quả gửi notification | deliveryId, alertId, channel, status | errorMessage, processedAt |
 
 ---
 
@@ -22,8 +22,10 @@
 
 | Method | Path | Mục đích | Consumer gọi khi nào? |
 |---|---|---|---|
-| POST | `/...` |  |  |
-| GET | `/.../{id}` |  |  |
+| POST | `/events/alert.created` | Nhận event tạo alert mới | Khi phát sinh cảnh báo |
+| POST | `/events/alert.escalated` | Nhận event nâng mức cảnh báo | Khi severity tăng |
+| POST | `/events/alert.resolved` | Nhận event đóng alert | Khi sự cố được xử lý |
+| GET | `/notifications/{id}` | Kiểm tra trạng thái notification | Khi cần monitoring/debug |
 
 ---
 
@@ -37,8 +39,10 @@ Tối thiểu 5 case.
 | 401 | Thiếu Bearer token | `Problem` |
 | 403 | Token hợp lệ nhưng không có quyền | `Problem` |
 | 404 | Resource không tồn tại | `Problem` |
-| 409 | Xung đột nghiệp vụ | `Problem` |
-| 422 | Dữ liệu đúng JSON nhưng vi phạm nghiệp vụ | `Problem` |
+| 409 | Event bị duplicate do retry | `Problem` |
+| 422 | Thiếu correlationId hoặc severity | `Problem` |
+| 429 | Queue quá tải | `Problem` |
+| 500 | Lỗi gửi Telegram/Email/App | `Problem` |
 
 ---
 
@@ -46,17 +50,17 @@ Tối thiểu 5 case.
 
 Ghi rõ những điểm user story chưa nói nhưng Provider cần giả định.
 
-- Giả định 1:
-- Giả định 2:
-- Giả định 3:
+- Giả định 1: Mỗi event phải có `eventId` duy nhất.
+- Giả định 2: Notification service hỗ trợ retry tối đa 3 lần.
+- Giả định 3: Severity dùng enum `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`.
 
 ---
 
 ## 5. Câu hỏi cho Consumer
 
-1. 
-2. 
-3. 
+1. Event `alert.created` có bắt buộc field severity không?
+2. Consumer có gửi danh sách channels hay Notification tự routing?
+3. Retry sẽ do Queue xử lý hay Notification tự retry?
 
 ---
 
@@ -64,5 +68,8 @@ Ghi rõ những điểm user story chưa nói nhưng Provider cần giả địn
 
 | Rủi ro | Tác động | Đề xuất xử lý |
 |---|---|---|
-| Tên field không thống nhất | Consumer parse lỗi | Chốt naming trong `openapi.yaml` |
-| Payload lớn | Timeout/mock lỗi | Thống nhất content-type và size limit |
+| Field name không thống nhất | Consumer parse lỗi | Chốt schema chung |
+| Duplicate event do retry | Gửi notification lặp | Dùng eventId để check |
+| Severity hiểu khác nhau | Sai mức cảnh báo | Chuẩn hóa enum severity |
+| Queue delay | Alert đến chậm | Retry + Dead Letter Queue |
+| Downstream lỗi | Mất notification | Retry policy |

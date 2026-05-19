@@ -1,33 +1,66 @@
 openapi: 3.1.0
 info:
-  title: Smart Campus — Lab 02 Contract Template
+  title: Notification Service API — Core Business → Notification (Queue Async)
   version: 1.0.0
   description: |
-    Hợp đồng API mẫu cho Lab 02.
-    Sinh viên cần sửa lại title, description, path, schema và example theo cặp đàm phán thực tế.
+    API Contract cho cặp đàm phán: Core Business (Consumer) → Notification (Provider)
+    
+    **Cơ chế**: Queue async
+    
+    **Mục đích**: Core Business phát event alert để Notification gửi thông báo đa kênh 
+    (Telegram, email, app message)
+    
+    **Lab 02 Scope**: Chỉ thống nhất event name, payload tối thiểu và retry assumption. 
+    Chi tiết AsyncAPI để Lab 03.
   contact:
-    name: FIT4110 Teaching Team
-    email: fit4110@example.edu.vn
+    name: Campus Spectral Team
+    email: team@campus-spectral.local
+  x-lab: '02'
+  x-pair: 'pair-04-core-notification-async'
+  x-provider: 'Notification Service'
+  x-consumer: 'Core Business Service'
+
 servers:
   - url: http://localhost:4010
     description: Prism mock server
-  - url: https://api.campus.local
-    description: Class network placeholder
+  - url: https://notification.campus.local
+    description: Campus network Notification service
+
 tags:
   - name: health
     description: Kiểm tra trạng thái service
-  - name: alerts
-    description: Quản lý cảnh báo Smart Campus
   - name: events
-    description: Quản lý sự kiện nghiệp vụ
+    description: Tiếp nhận sự kiện alert từ Core Business
+
 security:
   - bearerAuth: []
+
 paths:
+  /:
+    get:
+      operationId: root
+      summary: Root endpoint
+      description: Endpoint mặc định kiểm tra API đang chạy.
+      security: []
+      responses:
+        '200':
+          description: API đang hoạt động
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [message]
+                properties:
+                  message:
+                    type: string
+                    example: Notification Service API is running
+
   /health:
     get:
       operationId: getHealth
       summary: Kiểm tra trạng thái service
-      description: Endpoint kiểm tra service còn hoạt động.
+      description: Endpoint kiểm tra Notification service còn hoạt động.
       tags: [health]
       security: []
       responses:
@@ -36,233 +69,292 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HealthStatus'
-              examples:
-                ok:
-                  value:
-                    status: ok
-                    service: lab02-contract-template
-                    time: '2026-05-10T08:00:00Z'
-
-  /alerts:
-    post:
-      operationId: createAlert
-      summary: Tạo cảnh báo mới
-      description: |
-        Endpoint mẫu để Provider nhận yêu cầu tạo cảnh báo từ Consumer.
-        Sinh viên cần sửa theo cặp đàm phán thực tế.
-      tags: [alerts]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateAlertRequest'
-            examples:
-              unauthorizedAccess:
-                value:
-                  sourceService: core-business
-                  alertType: UNAUTHORIZED_ACCESS
-                  severity: HIGH
-                  message: Phát hiện truy cập trái phép tại cổng chính
-                  relatedEventId: 0196fb3d-4ad7-7d1e-9f49-5d5148d2babc
-      responses:
-        '201':
-          description: Cảnh báo đã được tạo
-          headers:
-            Location:
-              description: URI của alert vừa tạo.
-              schema:
-                type: string
-                format: uri
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Alert'
-              examples:
-                created:
-                  value:
-                    id: 0196fb3d-4ad7-7d1e-9f49-5d5148d2babc
-                    sourceService: core-business
-                    alertType: UNAUTHORIZED_ACCESS
-                    severity: HIGH
-                    message: Phát hiện truy cập trái phép tại cổng chính
-                    relatedEventId: 0196fb3d-4ad7-7d1e-9f49-5d5148d2babc
-                    status: OPEN
-                    createdAt: '2026-05-10T08:00:00Z'
-                    resolvedAt: null
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '422':
-          $ref: '#/components/responses/UnprocessableEntity'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-    get:
-      operationId: listAlerts
-      summary: Lấy danh sách cảnh báo
-      description: Lấy danh sách cảnh báo với cursor-based pagination.
-      tags: [alerts]
-      parameters:
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
-      responses:
-        '200':
-          description: Danh sách cảnh báo
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AlertPage'
-              examples:
-                firstPage:
-                  value:
-                    items:
-                      - id: 0196fb3d-4ad7-7d1e-9f49-5d5148d2babc
-                        sourceService: core-business
-                        alertType: UNAUTHORIZED_ACCESS
-                        severity: HIGH
-                        message: Phát hiện truy cập trái phép tại cổng chính
-                        relatedEventId: 0196fb3d-4ad7-7d1e-9f49-5d5148d2babc
-                        status: OPEN
-                        createdAt: '2026-05-10T08:00:00Z'
-                        resolvedAt: null
-                    nextCursor: null
-                    hasMore: false
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  /alerts/recent:
-    get:
-      operationId: getRecentAlerts
-      summary: Lấy các cảnh báo gần đây
-      description: Endpoint mẫu cho cặp Analytics ↔ Core Business hoặc Frontend ↔ Core Business.
-      tags: [alerts]
-      parameters:
-        - name: limit
-          in: query
-          required: false
-          description: Số cảnh báo tối đa cần lấy.
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 20
-      responses:
-        '200':
-          description: Danh sách cảnh báo gần đây
-          content:
-            application/json:
-              schema:
                 type: object
                 additionalProperties: false
-                required: [items]
+                required: [status, service, timestamp]
                 properties:
-                  items:
-                    type: array
-                    minItems: 0
-                    maxItems: 100
-                    items:
-                      $ref: '#/components/schemas/Alert'
-              examples:
-                recentAlerts:
-                  value:
-                    items: []
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                  status:
+                    type: string
+                    enum: [ok]
+                  service:
+                    type: string
+                    example: notification-service
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: '2026-05-19T10:30:00Z'
 
-  /alerts/{alertId}:
-    get:
-      operationId: getAlertById
-      summary: Lấy chi tiết một cảnh báo
-      description: Lấy chi tiết alert theo UUID.
-      tags: [alerts]
-      parameters:
-        - $ref: '#/components/parameters/AlertId'
-      responses:
-        '200':
-          description: Chi tiết cảnh báo
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Alert'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  /events:
+  /events/alert.created:
     post:
-      operationId: createCampusEvent
-      summary: Gửi sự kiện nghiệp vụ vào hệ thống
+      operationId: handleAlertCreated
+      summary: Tiếp nhận event alert.created
       description: |
-        Endpoint minh họa polymorphism. Event có thể là SensorEvent hoặc AccessEvent.
+        Endpoint tiếp nhận event tạo alert mới từ Core Business.
+        
+        Notification service sẽ xử lý gửi thông báo đa kênh dựa trên severity và cấu hình channel.
+        
+        **Retry Policy**: Core Business hoặc Queue sẽ retry tối đa 3 lần nếu gặp lỗi 5xx hoặc timeout.
       tags: [events]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CampusEvent'
+              $ref: '#/components/schemas/AlertEventPayload'
             examples:
-              sensorEvent:
+              highSeverityAlert:
                 value:
-                  eventType: SENSOR_READING
-                  eventId: 0196fb3d-4ad7-7d1e-9f49-5d5148d2babc
-                  deviceId: SENSOR-001
-                  metric: temperature
-                  value: 38.5
-                  unit: celsius
-                  timestamp: '2026-05-10T08:00:00Z'
-              accessEvent:
-                value:
-                  eventType: ACCESS_CHECK
-                  eventId: 0196fb3d-4ad7-7d1e-9f49-5d5148d2babd
-                  gateId: GATE-01
-                  cardId: RFID-2026-001
-                  decision: ALLOW
-                  timestamp: '2026-05-10T08:01:00Z'
+                  eventId: '550e8400-e29b-41d4-a716-446655440000'
+                  eventType: 'alert.created'
+                  alertId: 'ALT-2026-05-19-001'
+                  correlationId: 'COR-2026-05-19-001'
+                  severity: 'HIGH'
+                  timestamp: '2026-05-19T10:30:00Z'
+                  payload:
+                    title: 'Truy cập trái phép được phát hiện'
+                    message: 'Cố gắng truy cập không được phép tại cổng chính lúc 10:30'
+                    source: 'access-gate-01'
+                    alertLevel: 'HIGH'
+                  channels: ['telegram', 'email', 'app']
+                  metadata:
+                    location: 'Main Gate'
+                    cameraId: 'CAM-001'
       responses:
-        '201':
-          description: Event đã được ghi nhận
+        '202':
+          description: |
+            Event đã được tiếp nhận và queue để xử lý gửi notification.
+            Server trả về immediately để đảm bảo async processing.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EventAccepted'
+                type: object
+                additionalProperties: false
+                required: [eventId, status]
+                properties:
+                  eventId:
+                    type: string
+                    format: uuid
+                    description: ID của event (echoed từ request)
+                  status:
+                    type: string
+                    enum: [queued]
+                  processedAt:
+                    type: string
+                    format: date-time
+              examples:
+                accepted:
+                  value:
+                    eventId: '550e8400-e29b-41d4-a716-446655440000'
+                    status: 'queued'
+                    processedAt: '2026-05-19T10:30:01Z'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
-webhooks:
-  alertCreated:
+  /events/alert.escalated:
     post:
-      operationId: onAlertCreated
-      summary: Webhook khi có alert mới
-      description: Provider phát sự kiện khi một cảnh báo mới được tạo.
-      tags: [alerts]
+      operationId: handleAlertEscalated
+      summary: Tiếp nhận event alert.escalated
+      description: |
+        Endpoint tiếp nhận event nâng mức cảnh báo từ Core Business.
+        
+        Severity của alert đã tăng lên (e.g., từ LOW → MEDIUM hoặc MEDIUM → HIGH).
+        Notification service sẽ cập nhật chiến lược gửi thông báo tương ứng.
+      tags: [events]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Alert'
+              $ref: '#/components/schemas/AlertEventPayload'
+            examples:
+              escalated:
+                value:
+                  eventId: '550e8400-e29b-41d4-a716-446655440002'
+                  eventType: 'alert.escalated'
+                  alertId: 'ALT-2026-05-19-001'
+                  correlationId: 'COR-2026-05-19-001'
+                  severity: 'CRITICAL'
+                  timestamp: '2026-05-19T10:35:00Z'
+                  payload:
+                    title: 'CẢNH BÁO NGHIÊM TRỌNG: Xâm nhập được phát hiện'
+                    message: 'Nhiều cố gắng xâm nhập liên tiếp được ghi nhận'
+                    source: 'access-gate-01'
+                    alertLevel: 'CRITICAL'
+                  channels: ['telegram', 'email', 'app', 'sms']
+                  metadata:
+                    location: 'Main Gate'
+                    previousSeverity: 'HIGH'
+                    attemptCount: 5
+      responses:
+        '202':
+          description: Event escalation đã được tiếp nhận xử lý
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [eventId, status]
+                properties:
+                  eventId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [queued]
+                  processedAt:
+                    type: string
+                    format: date-time
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /events/alert.resolved:
+    post:
+      operationId: handleAlertResolved
+      summary: Tiếp nhận event alert.resolved
+      description: |
+        Endpoint tiếp nhận event đóng/giải quyết cảnh báo từ Core Business.
+        
+        Alert đã được xử lý xong. Notification service có thể gửi thông báo xác nhận 
+        hoặc cập nhật trạng thái trong hệ thống theo cấu hình.
+      tags: [events]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertEventPayload'
+            examples:
+              resolved:
+                value:
+                  eventId: '550e8400-e29b-41d4-a716-446655440003'
+                  eventType: 'alert.resolved'
+                  alertId: 'ALT-2026-05-19-001'
+                  correlationId: 'COR-2026-05-19-001'
+                  severity: 'HIGH'
+                  timestamp: '2026-05-19T11:00:00Z'
+                  payload:
+                    title: 'Cảnh báo đã được giải quyết'
+                    message: 'Vụ xâm nhập tại cổng chính đã được xử lý'
+                    source: 'access-gate-01'
+                    alertLevel: 'RESOLVED'
+                  channels: ['telegram', 'email', 'app']
+                  metadata:
+                    location: 'Main Gate'
+                    resolutionTime: '00:30:00'
+                    resolvedBy: 'Security Team'
+      responses:
+        '202':
+          description: Event resolution đã được tiếp nhận xử lý
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [eventId, status]
+                properties:
+                  eventId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [queued]
+                  processedAt:
+                    type: string
+                    format: date-time
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /notifications/{notificationId}:
+    get:
+      operationId: getNotificationStatus
+      summary: Kiểm tra trạng thái gửi notification
+      description: |
+        Endpoint cho phép Core Business (hoặc monitoring tool) kiểm tra trạng thái 
+        của một notification delivery sau khi event đã gửi.
+        
+        Hữu ích cho debugging hoặc audit trail.
+      tags: [events]
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          description: ID của notification delivery (không phải eventId)
+          schema:
+            type: string
+            format: uuid
+            example: '550e8400-e29b-41d4-a716-446655440100'
       responses:
         '200':
-          description: Consumer đã nhận webhook
+          description: Chi tiết trạng thái notification
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationDelivery'
+              examples:
+                success:
+                  value:
+                    deliveryId: '550e8400-e29b-41d4-a716-446655440100'
+                    alertId: 'ALT-2026-05-19-001'
+                    eventId: '550e8400-e29b-41d4-a716-446655440000'
+                    channel: 'telegram'
+                    status: 'delivered'
+                    sentAt: '2026-05-19T10:30:02Z'
+                    deliveredAt: '2026-05-19T10:30:03Z'
+                    errorMessage: null
+                failed:
+                  value:
+                    deliveryId: '550e8400-e29b-41d4-a716-446655440101'
+                    alertId: 'ALT-2026-05-19-001'
+                    eventId: '550e8400-e29b-41d4-a716-446655440000'
+                    channel: 'sms'
+                    status: 'failed'
+                    sentAt: '2026-05-19T10:30:02Z'
+                    deliveredAt: null
+                    errorMessage: 'SMS gateway timeout after 3 retries'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
 components:
   securitySchemes:
@@ -270,363 +362,353 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-
-  parameters:
-    AlertId:
-      name: alertId
-      in: path
-      required: true
-      description: UUID của cảnh báo.
-      schema:
-        type: string
-        format: uuid
-    Cursor:
-      name: cursor
-      in: query
-      required: false
-      description: Cursor dùng để lấy trang tiếp theo.
-      schema:
-        type: [string, 'null']
-        minLength: 1
-        maxLength: 200
-    Limit:
-      name: limit
-      in: query
-      required: false
-      description: Số item tối đa mỗi trang.
-      schema:
-        type: integer
-        minimum: 1
-        maximum: 100
-        default: 20
+      description: Bearer token JWT được cấp bởi Auth service
 
   schemas:
-    HealthStatus:
+    AlertEventPayload:
       type: object
       additionalProperties: false
-      required: [status, service, time]
+      required: 
+        - eventId
+        - eventType
+        - alertId
+        - correlationId
+        - severity
+        - timestamp
+        - payload
       properties:
+        eventId:
+          type: string
+          format: uuid
+          description: ID duy nhất của event (UUID v4). Dùng để detect duplicate retry.
+        eventType:
+          type: string
+          enum: [alert.created, alert.escalated, alert.resolved]
+          description: Loại event được gửi
+        alertId:
+          type: string
+          description: ID của alert trong Core Business (e.g., ALT-2026-05-19-001)
+          minLength: 1
+          maxLength: 100
+        correlationId:
+          type: string
+          description: |
+            ID để correlate các request từ cùng một business transaction.
+            Giúp tracing end-to-end.
+          minLength: 1
+          maxLength: 100
+        severity:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+          description: |
+            Mức độ cảnh báo. 
+            - LOW: Thông báo qua email
+            - MEDIUM: Email + App
+            - HIGH: Email + App + Telegram
+            - CRITICAL: Email + App + Telegram + SMS
+        timestamp:
+          type: string
+          format: date-time
+          description: Thời điểm event được tạo (ISO 8601)
+        payload:
+          type: object
+          additionalProperties: false
+          required: [title, message, source]
+          properties:
+            title:
+              type: string
+              description: Tiêu đề alert dễ đọc
+              minLength: 1
+              maxLength: 200
+            message:
+              type: string
+              description: Chi tiết alert
+              minLength: 1
+              maxLength: 1000
+            source:
+              type: string
+              description: Hệ thống/module phát sinh alert
+              minLength: 1
+              maxLength: 100
+            alertLevel:
+              type: string
+              description: Label hiển thị alert level
+              minLength: 1
+              maxLength: 50
+          description: Payload chi tiết của alert
+        channels:
+          type: array
+          items:
+            type: string
+            enum: [telegram, email, app, sms]
+          description: Danh sách channel gửi notification. Nếu rỗng, dùng default.
+          minItems: 0
+          maxItems: 4
+        metadata:
+          type: object
+          additionalProperties: true
+          description: |
+            Metadata tùy chọn: location, cameraId, deviceId, v.v.
+            Dùng cho context trong notification message.
+          example:
+            location: 'Main Gate'
+            cameraId: 'CAM-001'
+      description: Payload của alert event từ Core Business
+
+    NotificationDelivery:
+      type: object
+      additionalProperties: false
+      required: 
+        - deliveryId
+        - alertId
+        - eventId
+        - channel
+        - status
+        - sentAt
+      properties:
+        deliveryId:
+          type: string
+          format: uuid
+          description: ID duy nhất của lần gửi notification
+        alertId:
+          type: string
+          description: ID của alert liên quan
+        eventId:
+          type: string
+          format: uuid
+          description: ID của event mà notification này được tạo từ
+        channel:
+          type: string
+          enum: [telegram, email, app, sms]
+          description: Channel gửi notification
         status:
           type: string
-          enum: [ok]
-          description: Trạng thái service.
-          example: ok
-        service:
-          type: string
-          minLength: 2
-          maxLength: 80
-          description: Tên service.
-          example: lab02-contract-template
-        time:
+          enum: [pending, sent, delivered, failed]
+          description: |
+            - pending: Đang chờ xử lý
+            - sent: Đã gửi đi
+            - delivered: Đã nhận bởi recipient/gateway
+            - failed: Thất bại sau retries
+        sentAt:
           type: string
           format: date-time
-          description: Thời điểm kiểm tra.
-          example: '2026-05-10T08:00:00Z'
-
-    CreateAlertRequest:
-      type: object
-      additionalProperties: false
-      required: [sourceService, alertType, severity, message]
-      properties:
-        sourceService:
+          description: Thời điểm notification được gửi
+        deliveredAt:
           type: string
-          minLength: 2
-          maxLength: 80
-          pattern: '^[a-z0-9-]+$'
-          description: Service tạo alert.
-          example: core-business
-        alertType:
+          format: date-time
+          nullable: true
+          description: Thời điểm nhận xác nhận delivery (nếu có)
+        errorMessage:
           type: string
-          enum: [UNAUTHORIZED_ACCESS, SENSOR_THRESHOLD_EXCEEDED, UNKNOWN_PERSON, SYSTEM_ERROR]
-          description: Loại cảnh báo.
-          example: UNAUTHORIZED_ACCESS
-        severity:
-          $ref: '#/components/schemas/AlertSeverity'
-        message:
-          type: string
-          minLength: 5
+          nullable: true
+          description: Mô tả lỗi nếu status = failed
           maxLength: 500
-          description: Nội dung cảnh báo.
-          example: Phát hiện truy cập trái phép tại cổng chính
-        relatedEventId:
-          type: [string, 'null']
-          format: uuid
-          description: Event liên quan, có thể null nếu chưa có event id.
-          example: 0196fb3d-4ad7-7d1e-9f49-5d5148d2babc
-
-    Alert:
-      allOf:
-        - $ref: '#/components/schemas/CreateAlertRequest'
-        - type: object
-          additionalProperties: false
-          required: [id, status, createdAt, resolvedAt]
-          properties:
-            id:
-              type: string
-              format: uuid
-              description: UUID của alert.
-              example: 0196fb3d-4ad7-7d1e-9f49-5d5148d2babc
-            status:
-              type: string
-              enum: [OPEN, ACKNOWLEDGED, RESOLVED]
-              description: Trạng thái xử lý alert.
-              example: OPEN
-            createdAt:
-              type: string
-              format: date-time
-              description: Thời điểm tạo alert.
-              example: '2026-05-10T08:00:00Z'
-            resolvedAt:
-              type: [string, 'null']
-              format: date-time
-              description: Thời điểm xử lý xong, null nếu chưa xử lý.
-              example: null
-
-    AlertSeverity:
-      type: string
-      enum: [LOW, MEDIUM, HIGH, CRITICAL]
-      description: Mức độ nghiêm trọng của cảnh báo.
-      example: HIGH
-
-    AlertPage:
-      type: object
-      additionalProperties: false
-      required: [items, nextCursor, hasMore]
-      properties:
-        items:
-          type: array
-          minItems: 0
-          maxItems: 100
-          items:
-            $ref: '#/components/schemas/Alert'
-        nextCursor:
-          type: [string, 'null']
-          description: Cursor trang tiếp theo, null nếu hết dữ liệu.
-          example: null
-        hasMore:
-          type: boolean
-          description: Còn dữ liệu ở trang sau hay không.
-          example: false
-
-    CampusEvent:
-      oneOf:
-        - $ref: '#/components/schemas/SensorEvent'
-        - $ref: '#/components/schemas/AccessEvent'
-      discriminator:
-        propertyName: eventType
-        mapping:
-          SENSOR_READING: '#/components/schemas/SensorEvent'
-          ACCESS_CHECK: '#/components/schemas/AccessEvent'
-
-    SensorEvent:
-      type: object
-      additionalProperties: false
-      required: [eventType, eventId, deviceId, metric, value, unit, timestamp]
-      properties:
-        eventType:
-          type: string
-          const: SENSOR_READING
-          description: Loại event.
-          example: SENSOR_READING
-        eventId:
-          type: string
-          format: uuid
-          description: UUID của event.
-        deviceId:
-          type: string
-          pattern: '^SENSOR-[0-9]{3}$'
-          description: Mã thiết bị cảm biến.
-          example: SENSOR-001
-        metric:
-          type: string
-          enum: [temperature, humidity, smoke, motion]
-          description: Loại chỉ số cảm biến.
-          example: temperature
-        value:
-          type: number
-          minimum: -100
-          maximum: 1000
-          description: Giá trị đo được.
-          example: 38.5
-        unit:
-          type: string
-          minLength: 1
-          maxLength: 20
-          description: Đơn vị đo.
-          example: celsius
-        timestamp:
-          type: string
-          format: date-time
-          description: Thời điểm đo.
-
-    AccessEvent:
-      type: object
-      additionalProperties: false
-      required: [eventType, eventId, gateId, cardId, decision, timestamp]
-      properties:
-        eventType:
-          type: string
-          const: ACCESS_CHECK
-          description: Loại event.
-          example: ACCESS_CHECK
-        eventId:
-          type: string
-          format: uuid
-          description: UUID của event.
-        gateId:
-          type: string
-          pattern: '^GATE-[0-9]{2}$'
-          description: Mã cổng.
-          example: GATE-01
-        cardId:
-          type: string
-          pattern: '^RFID-[0-9]{4}-[0-9]{3}$'
-          description: Mã thẻ RFID.
-          example: RFID-2026-001
-        decision:
-          type: string
-          enum: [ALLOW, DENY]
-          description: Quyết định truy cập.
-          example: ALLOW
-        timestamp:
-          type: string
-          format: date-time
-          description: Thời điểm kiểm tra.
-
-    EventAccepted:
-      type: object
-      additionalProperties: false
-      required: [eventId, acceptedAt]
-      properties:
-        eventId:
-          type: string
-          format: uuid
-          description: UUID của event được nhận.
-        acceptedAt:
-          type: string
-          format: date-time
-          description: Thời điểm hệ thống ghi nhận event.
+      description: Thông tin trạng thái gửi notification theo từng channel
 
     Problem:
       type: object
       additionalProperties: false
-      required: [type, title, status]
+      required: [type, title, status, detail]
       properties:
         type:
           type: string
           format: uri
-          description: URI định danh loại lỗi.
-          example: https://campus.local/errors/validation
+          description: URI định danh loại problem (RFC 7807)
         title:
           type: string
-          minLength: 3
-          maxLength: 120
-          description: Tiêu đề lỗi ngắn gọn.
-          example: Dữ liệu không hợp lệ
+          description: Tên short của problem
         status:
           type: integer
-          minimum: 400
-          maximum: 599
-          description: HTTP status code.
-          example: 400
+          description: HTTP status code
         detail:
-          type: [string, 'null']
-          maxLength: 500
-          description: Mô tả chi tiết lỗi.
-          example: Field cardId không đúng định dạng
+          type: string
+          description: Mô tả chi tiết của problem
         instance:
-          type: [string, 'null']
+          type: string
           format: uri
-          description: URI của request gây lỗi.
-          example: /alerts
-        errors:
-          type: array
-          minItems: 0
-          maxItems: 50
-          items:
-            type: object
-            additionalProperties: false
-            required: [field, code, message]
-            properties:
-              field:
-                type: string
-                minLength: 1
-                maxLength: 80
-                example: cardId
-              code:
-                type: string
-                minLength: 2
-                maxLength: 80
-                example: PATTERN_MISMATCH
-              message:
-                type: string
-                minLength: 3
-                maxLength: 200
-                example: cardId phải có dạng RFID-YYYY-NNN
+          nullable: true
+          description: URI của instance gặp problem
+        correlationId:
+          type: string
+          nullable: true
+          description: Correlation ID để tracing
+      description: RFC 7807 Problem Response
 
   responses:
     BadRequest:
-      description: Dữ liệu sai định dạng
+      description: |
+        **400 Bad Request**
+        
+        Payload sai định dạng, missing required fields, hoặc violation schema.
       content:
-        application/problem+json:
+        application/json:
           schema:
             $ref: '#/components/schemas/Problem'
-          example:
-            type: https://campus.local/errors/validation
-            title: Dữ liệu không hợp lệ
-            status: 400
-            detail: Payload không đúng JSON Schema
-            instance: /alerts
-            errors:
-              - field: alertType
-                code: ENUM_MISMATCH
-                message: alertType không nằm trong danh sách cho phép
+          examples:
+            malformedJson:
+              value:
+                type: 'https://notification.campus.local/problems/bad-request'
+                title: 'Malformed JSON'
+                status: 400
+                detail: 'Request body không phải JSON hợp lệ.'
+                correlationId: 'COR-2026-05-19-001'
+            missingField:
+              value:
+                type: 'https://notification.campus.local/problems/bad-request'
+                title: 'Missing Required Field'
+                status: 400
+                detail: 'Field "correlationId" là bắt buộc nhưng không có trong request.'
+                correlationId: 'COR-2026-05-19-001'
 
     Unauthorized:
-      description: Thiếu hoặc sai thông tin xác thực
+      description: |
+        **401 Unauthorized**
+        
+        Thiếu Bearer token hoặc token không hợp lệ.
       content:
-        application/problem+json:
+        application/json:
           schema:
             $ref: '#/components/schemas/Problem'
-          example:
-            type: https://campus.local/errors/unauthorized
-            title: Chưa xác thực
-            status: 401
-            detail: Thiếu Bearer token
-            instance: /alerts/recent
-            errors: []
+          examples:
+            missingToken:
+              value:
+                type: 'https://notification.campus.local/problems/unauthorized'
+                title: 'Missing Bearer Token'
+                status: 401
+                detail: 'Header Authorization không chứa Bearer token.'
+                correlationId: 'COR-2026-05-19-001'
+            invalidToken:
+              value:
+                type: 'https://notification.campus.local/problems/unauthorized'
+                title: 'Invalid Token'
+                status: 401
+                detail: 'Bearer token không hợp lệ hoặc hết hạn.'
+                correlationId: 'COR-2026-05-19-001'
 
     Forbidden:
-      description: Không có quyền thực hiện thao tác
+      description: |
+        **403 Forbidden**
+        
+        Token hợp lệ nhưng service không có quyền truy cập.
       content:
-        application/problem+json:
+        application/json:
           schema:
             $ref: '#/components/schemas/Problem'
+          examples:
+            noPermission:
+              value:
+                type: 'https://notification.campus.local/problems/forbidden'
+                title: 'Insufficient Permissions'
+                status: 403
+                detail: 'Service "analytics" không có quyền gửi alert event.'
+                correlationId: 'COR-2026-05-19-001'
 
     NotFound:
-      description: Resource không tồn tại
+      description: |
+        **404 Not Found**
+        
+        Resource không tồn tại (e.g., notificationId không tìm thấy).
       content:
-        application/problem+json:
+        application/json:
           schema:
             $ref: '#/components/schemas/Problem'
+          examples:
+            notFound:
+              value:
+                type: 'https://notification.campus.local/problems/not-found'
+                title: 'Notification Not Found'
+                status: 404
+                detail: 'Notification với ID "550e8400-e29b-41d4-a716-446655440100" không tồn tại.'
+                correlationId: 'COR-2026-05-19-001'
 
     Conflict:
-      description: Xung đột nghiệp vụ hoặc trùng idempotency key
+      description: |
+        **409 Conflict**
+        
+        Event bị duplicate do retry (eventId đã xử lý trước đó).
       content:
-        application/problem+json:
+        application/json:
           schema:
             $ref: '#/components/schemas/Problem'
+          examples:
+            duplicateEvent:
+              value:
+                type: 'https://notification.campus.local/problems/conflict'
+                title: 'Duplicate Event'
+                status: 409
+                detail: 'Event với ID "550e8400-e29b-41d4-a716-446655440000" đã được xử lý.'
+                correlationId: 'COR-2026-05-19-001'
 
     UnprocessableEntity:
-      description: Payload đúng định dạng nhưng không hợp lệ về nghiệp vụ
+      description: |
+        **422 Unprocessable Entity**
+        
+        Payload đúng format nhưng vi phạm business logic (e.g., missing severity, invalid severity enum).
       content:
-        application/problem+json:
+        application/json:
           schema:
             $ref: '#/components/schemas/Problem'
+          examples:
+            missingSeverity:
+              value:
+                type: 'https://notification.campus.local/problems/unprocessable-entity'
+                title: 'Missing Severity'
+                status: 422
+                detail: 'Field "severity" là bắt buộc để xác định channel gửi notification.'
+                correlationId: 'COR-2026-05-19-001'
+            missingCorrelationId:
+              value:
+                type: 'https://notification.campus.local/problems/unprocessable-entity'
+                title: 'Missing Correlation ID'
+                status: 422
+                detail: 'Field "correlationId" cần thiết để tracing end-to-end.'
+                correlationId: 'COR-2026-05-19-001'
+
+    TooManyRequests:
+      description: |
+        **429 Too Many Requests**
+        
+        Queue Notification service quá tải. Consumer nên retry sau vài giây.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            rateLimited:
+              value:
+                type: 'https://notification.campus.local/problems/too-many-requests'
+                title: 'Too Many Requests'
+                status: 429
+                detail: 'Notification service đang quá tải. Vui lòng retry sau 10 giây.'
+                correlationId: 'COR-2026-05-19-001'
+          headers:
+            Retry-After:
+              description: Số giây nên đợi trước khi retry
+              schema:
+                type: integer
+                example: 10
 
     InternalServerError:
-      description: Lỗi không mong muốn phía server
+      description: |
+        **500 Internal Server Error**
+        
+        Lỗi internal: downstream service (Telegram, Email, v.v.) không khả dụng hoặc bug server.
       content:
-        application/problem+json:
+        application/json:
           schema:
             $ref: '#/components/schemas/Problem'
+          examples:
+            downstreamError:
+              value:
+                type: 'https://notification.campus.local/problems/internal-server-error'
+                title: 'Email Gateway Error'
+                status: 500
+                detail: 'Email gateway không phản hồi. Notification sẽ được retry.'
+                correlationId: 'COR-2026-05-19-001'
+            telegramError:
+              value:
+                type: 'https://notification.campus.local/problems/internal-server-error'
+                title: 'Telegram API Error'
+                status: 500
+                detail: 'Telegram API trả về lỗi 500. Server sẽ retry sau.'
+                correlationId: 'COR-2026-05-19-001'

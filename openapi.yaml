@@ -42,6 +42,7 @@ paths:
       summary: Root endpoint
       description: Endpoint mặc định kiểm tra API đang chạy.
       security: []
+      tags: [health]
       responses:
         '200':
           description: API đang hoạt động
@@ -494,13 +495,11 @@ components:
           format: date-time
           description: Thời điểm notification được gửi
         deliveredAt:
-          type: string
+          type: [string, "null"]
           format: date-time
-          nullable: true
           description: Thời điểm nhận xác nhận delivery (nếu có)
         errorMessage:
-          type: string
-          nullable: true
+          type: [string, "null"]
           description: Mô tả lỗi nếu status = failed
           maxLength: 500
       description: Thông tin trạng thái gửi notification theo từng channel
@@ -524,13 +523,11 @@ components:
           type: string
           description: Mô tả chi tiết của problem
         instance:
-          type: string
+          type: [string, "null"]
           format: uri
-          nullable: true
           description: URI của instance gặp problem
         correlationId:
-          type: string
-          nullable: true
+          type: [string, "null"]
           description: Correlation ID để tracing
       description: RFC 7807 Problem Response
 
@@ -669,6 +666,12 @@ components:
         **429 Too Many Requests**
         
         Queue Notification service quá tải. Consumer nên retry sau vài giây.
+      headers:
+        Retry-After:
+          description: Số giây nên đợi trước khi retry
+          schema:
+            type: integer
+            example: 10
       content:
         application/json:
           schema:
@@ -681,12 +684,6 @@ components:
                 status: 429
                 detail: 'Notification service đang quá tải. Vui lòng retry sau 10 giây.'
                 correlationId: 'COR-2026-05-19-001'
-          headers:
-            Retry-After:
-              description: Số giây nên đợi trước khi retry
-              schema:
-                type: integer
-                example: 10
 
     InternalServerError:
       description: |

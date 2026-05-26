@@ -1,5 +1,1 @@
-c:/Users/kise/lab02-ngocviphacker/openapi.yaml:479:21 error campus-no-nullable "Không dùng nullable. Hãy dùng type: [string, "null"] hoặc union type tương ứng."
-c:/Users/kise/lab02-ngocviphacker/openapi.yaml:483:21 error campus-no-nullable "Không dùng nullable. Hãy dùng type: [string, "null"] hoặc union type tương ứng."
-c:/Users/kise/lab02-ngocviphacker/openapi.yaml:509:21 error campus-no-nullable "Không dùng nullable. Hãy dùng type: [string, "null"] hoặc union type tương ứng."
-c:/Users/kise/lab02-ngocviphacker/openapi.yaml:513:21 error campus-no-nullable "Không dùng nullable. Hãy dùng type: [string, "null"] hoặc union type tương ứng."
-c:/Users/kise/lab02-ngocviphacker/openapi.yaml:653:26 error oas3-schema ""application~1json" property must not have unevaluated properties."
+No results with a severity of 'error' found!

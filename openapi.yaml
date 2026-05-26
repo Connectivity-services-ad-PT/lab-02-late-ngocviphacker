@@ -43,7 +43,6 @@ paths:
       description: Endpoint mặc định kiểm tra API đang chạy.
       tags: [health]
       security: []
-      tags: [health]
       responses:
         '200':
           description: API đang hoạt động

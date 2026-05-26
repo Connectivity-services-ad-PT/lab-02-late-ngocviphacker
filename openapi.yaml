@@ -346,7 +346,7 @@ paths:
                     status: 'delivered'
                     sentAt: '2026-05-19T10:30:02Z'
                     deliveredAt: '2026-05-19T10:30:03Z'
-                    errorMessage: null
+                    errorMessage: 'No error'
                 failed:
                   value:
                     deliveryId: '550e8400-e29b-41d4-a716-446655440101'
@@ -355,7 +355,7 @@ paths:
                     channel: 'sms'
                     status: 'failed'
                     sentAt: '2026-05-19T10:30:02Z'
-                    deliveredAt: null
+                    deliveredAt: '2026-05-19T10:30:05Z'
                     errorMessage: 'SMS gateway timeout after 3 retries'
         '401':
           $ref: '#/components/responses/Unauthorized'

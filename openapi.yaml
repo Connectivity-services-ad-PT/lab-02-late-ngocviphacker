@@ -3,7 +3,8 @@ info:
   title: Notification Service API — Core Business → Notification (Queue Async)
   version: 1.0.0
   description: |
-    API Contract cho cặp đàm phán: Core Business (Consumer) → Notification (Provider)
+    API Contract cho cặp đàm phán 6A/7A, Product A/A:
+    Core Business Service (Consumer) → Notification Service (Provider).
     
     **Cơ chế**: Queue async
     
@@ -16,6 +17,8 @@ info:
     name: Campus Spectral Team
     email: team@campus-spectral.local
   x-lab: '02'
+  x-negotiation-pair: '6A/7A'
+  x-product: 'A/A'
   x-pair: 'pair-04-core-notification-async'
   x-provider: 'Notification Service'
   x-consumer: 'Core Business Service'
@@ -109,9 +112,11 @@ paths:
                   eventType: 'alert.created'
                   alertId: 'ALT-2026-05-19-001'
                   correlationId: 'COR-2026-05-19-001'
+                  source: 'core-business-service'
                   severity: 'HIGH'
-                  timestamp: '2026-05-19T10:30:00Z'
-                  payload:
+                  alertVersion: 1
+                  occurredAt: '2026-05-19T10:30:00Z'
+                  data:
                     title: 'Truy cập trái phép được phát hiện'
                     message: 'Cố gắng truy cập không được phép tại cổng chính lúc 10:30'
                     source: 'access-gate-01'
@@ -186,9 +191,11 @@ paths:
                   eventType: 'alert.escalated'
                   alertId: 'ALT-2026-05-19-001'
                   correlationId: 'COR-2026-05-19-001'
+                  source: 'core-business-service'
                   severity: 'CRITICAL'
-                  timestamp: '2026-05-19T10:35:00Z'
-                  payload:
+                  alertVersion: 2
+                  occurredAt: '2026-05-19T10:35:00Z'
+                  data:
                     title: 'CẢNH BÁO NGHIÊM TRỌNG: Xâm nhập được phát hiện'
                     message: 'Nhiều cố gắng xâm nhập liên tiếp được ghi nhận'
                     source: 'access-gate-01'
@@ -255,9 +262,11 @@ paths:
                   eventType: 'alert.resolved'
                   alertId: 'ALT-2026-05-19-001'
                   correlationId: 'COR-2026-05-19-001'
+                  source: 'core-business-service'
                   severity: 'HIGH'
-                  timestamp: '2026-05-19T11:00:00Z'
-                  payload:
+                  alertVersion: 3
+                  occurredAt: '2026-05-19T11:00:00Z'
+                  data:
                     title: 'Cảnh báo đã được giải quyết'
                     message: 'Vụ xâm nhập tại cổng chính đã được xử lý'
                     source: 'access-gate-01'
@@ -374,9 +383,11 @@ components:
         - eventType
         - alertId
         - correlationId
+        - source
         - severity
-        - timestamp
-        - payload
+        - alertVersion
+        - occurredAt
+        - data
       properties:
         eventId:
           type: string
@@ -398,6 +409,10 @@ components:
             Giúp tracing end-to-end.
           minLength: 1
           maxLength: 100
+        source:
+          type: string
+          description: Service phát sinh event.
+          enum: [core-business-service]
         severity:
           type: string
           enum: [LOW, MEDIUM, HIGH, CRITICAL]
@@ -407,11 +422,15 @@ components:
             - MEDIUM: Email + App
             - HIGH: Email + App + Telegram
             - CRITICAL: Email + App + Telegram + SMS
-        timestamp:
+        alertVersion:
+          type: integer
+          minimum: 1
+          description: Version tăng dần theo từng thay đổi trạng thái của alert để xử lý out-of-order.
+        occurredAt:
           type: string
           format: date-time
           description: Thời điểm event được tạo (ISO 8601)
-        payload:
+        data:
           type: object
           additionalProperties: false
           required: [title, message, source]

@@ -12,6 +12,9 @@ Tài liệu này mô tả chiến lược versioning cho contract API và event 
 ## Event contract
 - Các event `alert.created`, `alert.escalated`, `alert.resolved` được xem là part của API contract.
 - Nếu thay đổi schema event hoặc enum `severity`, thì đây là breaking change và cần cập nhật version lớn.
+- Topic version hiện tại là `campus.alert.notification.v1`.
+- Thêm field optional có thể tăng minor version nếu consumer/provider cũ vẫn xử lý được.
+- Đổi tên event, bỏ required field, đổi meaning của `severity`, hoặc đổi idempotency key là breaking change.
 
 ## Changelog
-- `1.0.0`: Bản đầu tiên cho cặp Core Business → Notification.
+- `1.0.0`: Bản đầu tiên cho cặp 6A/7A, Product A/A, Core Business → Notification.

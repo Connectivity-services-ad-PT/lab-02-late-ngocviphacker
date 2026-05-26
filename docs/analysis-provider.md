@@ -5,7 +5,7 @@
 - Provider service:Notification
 - Consumer service:Core Business
 - Người viết:Nguyễn Thế Ngọc
-- Ngày:19/05/2026
+- Ngày:20/05/2026
 
 ---
 
